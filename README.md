@@ -1,6 +1,6 @@
 # tmzmapper
 
-Una simple utilidad que mapea las zonas horarias de [ActiveSupport](https://api.rubyonrails.org/classes/ActiveSupport/TimeZone.html) con su correspondiente par de la especificación IANA.
+Una simple utilidad que mapea las zonas horarias de [ActiveSupport](https://api.rubyonrails.org/classes/ActiveSupport/TimeZone.html) con su correspondiente par.
 
 ## ¿Por qué?
 
