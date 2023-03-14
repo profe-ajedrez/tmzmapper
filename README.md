@@ -12,6 +12,12 @@ tmzmapper intenta cargar un json con el mapeo a lo TZInfo en un map[string]strin
 
 ## Modo de uso
 
+Instale con `go get`
+
+```go
+go get https://github.com/profe-ajedrez/tmzmapper
+```
+
 ```go
 
 ianaTMZ, err := TZInfoToIANA("Midway Island")
