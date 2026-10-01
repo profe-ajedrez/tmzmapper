@@ -8,7 +8,9 @@ Debí recibir en una api GO los datos de zona horaria de una aplicación Ruby qu
 
 ## Como
 
-tmzmapper intenta cargar un json con el mapeo a lo TZInfo en un map[string]string. Si no encuentra dicho json, descarga https://raw.githubusercontent.com/rails/rails/main/activesupport/lib/active_support/values/time_zone.rb y procesa el archivo convirtiendo `TimeZone::MAPPING` en json y guardando el archivo resultante
+tmzmapper intenta cargar un JSON con el mapeo de TZInfo en un `map[string]string`. Si el archivo no existe, está vacío o contiene JSON inválido, descarga la definición de [`TimeZone::MAPPING` de Rails v8.1.4](https://github.com/rails/rails/blob/v8.1.4/activesupport/lib/active_support/values/time_zone.rb), la procesa y reemplaza el caché de forma atómica.
+
+La versión de Rails está fijada para evitar que un cambio incompatible en la rama `main` rompa la aplicación. Para actualizar el mapeo se debe cambiar explícitamente el tag en `rawURL` y ejecutar la suite de pruebas.
 
 ## Modo de uso
 
