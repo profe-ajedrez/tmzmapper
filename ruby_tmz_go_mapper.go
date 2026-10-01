@@ -1,11 +1,14 @@
 package tmzmapper
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -16,38 +19,69 @@ const (
 // DownloadHash   descarga via petición GET el archivo con el mapeo de tzinfo, y devuelve
 // dicho mapeo como map[string]string
 func DownloadHash() (map[string]string, error) {
-	resp, err := http.Get(rawURL)
+	return downloadHash(http.DefaultClient, rawURL)
+}
+
+func downloadHash(client *http.Client, url string) (map[string]string, error) {
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("download time zone mapping: unexpected HTTP status %s", resp.Status)
 	}
 
-	str := string(body)
+	return parseTimeZoneMapping(resp.Body)
+}
 
-	index := strings.Index(str, "MAPPING")
-	str = str[index:]
+func parseTimeZoneMapping(reader io.Reader) (map[string]string, error) {
+	scanner := bufio.NewScanner(reader)
+	mapping := make(map[string]string)
+	inMapping := false
 
-	index = strings.Index(str, "UTC_OFFSET_WITH_COLON")
-	str = strings.ReplaceAll(str[:index], "MAPPING = {", "")
-	str = strings.TrimSpace(strings.ReplaceAll(str, "}", ""))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if !inMapping {
+			if strings.HasPrefix(line, "MAPPING = {") {
+				inMapping = true
+			}
+			continue
+		}
 
-	lines := strings.Split(str, ",")
+		if line == "}" {
+			if len(mapping) == 0 {
+				return nil, errors.New("time zone mapping is empty")
+			}
+			return mapping, nil
+		}
 
-	gomap := make(map[string]string)
-	for _, line := range lines {
-		subLine := strings.Split(line, "=>")
-		key := strings.ReplaceAll(strings.TrimSpace(subLine[0]), "\"", "")
-		value := strings.ReplaceAll(strings.TrimSpace(subLine[1]), "\"", "")
-		gomap[key] = value
+		line = strings.TrimSuffix(line, ",")
+		parts := strings.SplitN(line, "=>", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid time zone mapping entry: %q", line)
+		}
+
+		key, err := strconv.Unquote(strings.TrimSpace(parts[0]))
+		if err != nil {
+			return nil, fmt.Errorf("invalid time zone name in %q: %w", line, err)
+		}
+		value, err := strconv.Unquote(strings.TrimSpace(parts[1]))
+		if err != nil {
+			return nil, fmt.Errorf("invalid time zone identifier in %q: %w", line, err)
+		}
+		mapping[key] = value
 	}
 
-	return gomap, nil
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read time zone mapping: %w", err)
+	}
+	if !inMapping {
+		return nil, errors.New("time zone mapping not found")
+	}
+	return nil, errors.New("time zone mapping closing brace not found")
 }
 
 // SaveMap guarda un map[string]string como un archivo json

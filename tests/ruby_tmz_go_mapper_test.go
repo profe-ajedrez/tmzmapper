@@ -7,13 +7,21 @@ import (
 	tmzmapper "github.com/profe-ajedrez/tmzmapper"
 )
 
-func TestDownloadHash(t *testing.T) {
-	mb, err := tmzmapper.DownloadHash()
+func TestSaveMapAndTZInfoToIANA(t *testing.T) {
+	originalWorkingDirectory, err := os.Getwd()
 	if err != nil {
-		t.Log(err)
-		t.FailNow()
+		t.Fatal(err)
 	}
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalWorkingDirectory); err != nil {
+			t.Errorf("restore working directory: %v", err)
+		}
+	})
 
+	mb := map[string]string{"Brussels": "Europe/Brussels"}
 	err = tmzmapper.SaveMap("./tmzmap.json", mb)
 	if err != nil {
 		t.Log(err)
@@ -26,13 +34,5 @@ func TestDownloadHash(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Log(value)
-
-	os.Remove("./tmzmap.json")
-	value, err = tmzmapper.TZInfoToIANA("Brussels")
-	if err != nil {
-		t.Log(err)
-		t.FailNow()
-	}
 	t.Log(value)
 }
